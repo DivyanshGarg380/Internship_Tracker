@@ -13,7 +13,7 @@ An intelligent recruiting CRM that automatically tracks internship and job appli
 
 ---
 
-[![CI Status](https://github.com/divyanshgarg380/Internship_Tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/divyanshgarg380/Internship_Tracker/actions)
+[![CI Status](https://github.com/DivyanshGarg380/Internship_Tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/DivyanshGarg380/Internship_Tracker/actions)
 
 ---
 
