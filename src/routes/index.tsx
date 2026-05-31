@@ -51,11 +51,8 @@ function Index() {
             <a href="#" className="hover:text-foreground">Docs</a>
           </nav>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/login">Sign in</Link>
-            </Button>
             <Button asChild size="sm">
-              <Link to="/login">Get started</Link>
+              <Link to="/app">Open dashboard</Link>
             </Button>
           </div>
         </div>
@@ -77,12 +74,9 @@ function Index() {
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <Button asChild size="lg">
-              <Link to="/login">
-                Get Started <ArrowRight className="ml-1.5 h-4 w-4" />
+              <Link to="/app">
+                Open Dashboard <ArrowRight className="ml-1.5 h-4 w-4" />
               </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link to="/app">View Demo</Link>
             </Button>
           </div>
         </div>
