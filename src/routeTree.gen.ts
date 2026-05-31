@@ -14,6 +14,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppTimelineRouteImport } from './routes/app.timeline'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppResumeRouteImport } from './routes/app.resume'
 import { Route as AppApplicationsRouteImport } from './routes/app.applications'
 import { Route as AppAnalyticsRouteImport } from './routes/app.analytics'
 
@@ -42,6 +43,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppResumeRoute = AppResumeRouteImport.update({
+  id: '/resume',
+  path: '/resume',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppApplicationsRoute = AppApplicationsRouteImport.update({
   id: '/applications',
   path: '/applications',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/applications': typeof AppApplicationsRoute
+  '/app/resume': typeof AppResumeRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/timeline': typeof AppTimelineRoute
   '/app/': typeof AppIndexRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/applications': typeof AppApplicationsRoute
+  '/app/resume': typeof AppResumeRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/timeline': typeof AppTimelineRoute
   '/app': typeof AppIndexRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/app/analytics': typeof AppAnalyticsRoute
   '/app/applications': typeof AppApplicationsRoute
+  '/app/resume': typeof AppResumeRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/timeline': typeof AppTimelineRoute
   '/app/': typeof AppIndexRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/analytics'
     | '/app/applications'
+    | '/app/resume'
     | '/app/settings'
     | '/app/timeline'
     | '/app/'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app/analytics'
     | '/app/applications'
+    | '/app/resume'
     | '/app/settings'
     | '/app/timeline'
     | '/app'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/analytics'
     | '/app/applications'
+    | '/app/resume'
     | '/app/settings'
     | '/app/timeline'
     | '/app/'
@@ -151,6 +163,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/resume': {
+      id: '/app/resume'
+      path: '/resume'
+      fullPath: '/app/resume'
+      preLoaderRoute: typeof AppResumeRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/applications': {
       id: '/app/applications'
       path: '/applications'
@@ -171,6 +190,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppApplicationsRoute: typeof AppApplicationsRoute
+  AppResumeRoute: typeof AppResumeRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppTimelineRoute: typeof AppTimelineRoute
   AppIndexRoute: typeof AppIndexRoute
@@ -179,6 +199,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAnalyticsRoute: AppAnalyticsRoute,
   AppApplicationsRoute: AppApplicationsRoute,
+  AppResumeRoute: AppResumeRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppTimelineRoute: AppTimelineRoute,
   AppIndexRoute: AppIndexRoute,
