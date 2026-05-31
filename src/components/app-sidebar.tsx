@@ -6,6 +6,7 @@ import {
   Activity,
   Settings,
   Inbox,
+  FileText,
 } from "lucide-react";
 import {
   Sidebar,
@@ -25,6 +26,7 @@ const items = [
   { title: "Applications", url: "/app/applications", icon: Briefcase },
   { title: "Analytics", url: "/app/analytics", icon: BarChart3 },
   { title: "Timeline", url: "/app/timeline", icon: Activity },
+  { title: "Resume", url: "/app/resume", icon: FileText },
   { title: "Settings", url: "/app/settings", icon: Settings },
 ];
 
