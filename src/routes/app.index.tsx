@@ -6,7 +6,16 @@ import { applications, funnel, stats } from "@/lib/dummy-data";
 import { ArrowDown, Briefcase, CheckCircle2, FileText, MessageSquare, Percent, Send } from "lucide-react";
 
 export const Route = createFileRoute("/app/")({
-  head: () => ({ meta: [{ title: "Dashboard — Inboxly" }] }),
+  head: () => ({ 
+    meta: [{ title: "Inboxly" }],
+    links: [
+      {
+        rel: "icon",
+        href: "/favicon.svg",
+        type: "image/svg+xml",
+      }
+    ]
+  }),
   component: Dashboard,
 });
 
