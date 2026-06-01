@@ -1,12 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/lib/theme";
-import { Mail } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/settings")({
   head: () => ({ meta: [{ title: "Settings — Inboxly" }] }),
@@ -15,62 +12,34 @@ export const Route = createFileRoute("/app/settings")({
 
 function SettingsPage() {
   const { theme, toggle } = useTheme();
+
+  async function exportJson() {
+    const [{ data: a }, { data: e }] = await Promise.all([
+      supabase.from("applications").select("*"),
+      supabase.from("timeline_events").select("*"),
+    ]);
+    const blob = new Blob([JSON.stringify({ applications: a, timeline_events: e }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `inboxly-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function clearAll() {
+    if (!confirm("Delete ALL applications and timeline events? This cannot be undone.")) return;
+    const { error } = await supabase.from("applications").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    if (error) { toast.error(error.message); return; }
+    toast.success("All data cleared.");
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage your account, sync, and preferences.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Personal tracker — single user, no authentication.</p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Connected Gmail Account</CardTitle>
-          <CardDescription>Inboxly reads recruiting emails only.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted">
-              <Mail className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">alex@stanford.edu</p>
-              <p className="text-xs text-muted-foreground">Connected on Mar 1, 2025 · Last synced 4 min ago</p>
-            </div>
-          </div>
-          <Button variant="outline" size="sm">Sync now</Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Sync Preferences</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Auto-detect applications</p>
-              <p className="text-xs text-muted-foreground">Parse new recruiting emails automatically.</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Notify on status change</p>
-              <p className="text-xs text-muted-foreground">Email me when an application progresses.</p>
-            </div>
-            <Switch defaultChecked />
-          </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Include archived threads</p>
-              <p className="text-xs text-muted-foreground">Scan archived mail during sync.</p>
-            </div>
-            <Switch />
-          </div>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Theme</CardTitle></CardHeader>
@@ -86,43 +55,30 @@ function SettingsPage() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Account</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" defaultValue="Alex Kim" />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" defaultValue="alex@stanford.edu" disabled />
-          </div>
+        <CardHeader>
+          <CardTitle className="text-base">Data</CardTitle>
+          <CardDescription>Export your applications and timeline events as JSON.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between">
           <div>
-            <Button size="sm">Save changes</Button>
+            <p className="text-sm font-medium">Export all data</p>
+            <p className="text-xs text-muted-foreground">Downloads a JSON snapshot.</p>
           </div>
+          <Button variant="outline" size="sm" onClick={exportJson}>Export JSON</Button>
         </CardContent>
       </Card>
 
       <Card className="border-destructive/40">
         <CardHeader>
           <CardTitle className="text-base text-destructive">Danger Zone</CardTitle>
-          <CardDescription>These actions are permanent.</CardDescription>
+          <CardDescription>This action is permanent.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Disconnect Gmail</p>
-              <p className="text-xs text-muted-foreground">Stop syncing. Existing data is kept.</p>
-            </div>
-            <Button variant="outline" size="sm">Disconnect</Button>
+        <CardContent className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Clear all applications</p>
+            <p className="text-xs text-muted-foreground">Deletes every application and timeline event.</p>
           </div>
-          <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Delete account</p>
-              <p className="text-xs text-muted-foreground">Permanently delete all data.</p>
-            </div>
-            <Button variant="destructive" size="sm">Delete</Button>
-          </div>
+          <Button variant="destructive" size="sm" onClick={clearAll}>Clear all</Button>
         </CardContent>
       </Card>
     </div>
