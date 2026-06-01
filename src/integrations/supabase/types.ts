@@ -14,7 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      applications: {
+        Row: {
+          applied_date: string
+          company: string
+          created_at: string
+          id: string
+          location: string
+          notes: string | null
+          role: string
+          status: Database["public"]["Enums"]["app_status"]
+          updated_at: string
+        }
+        Insert: {
+          applied_date?: string
+          company: string
+          created_at?: string
+          id?: string
+          location?: string
+          notes?: string | null
+          role: string
+          status?: Database["public"]["Enums"]["app_status"]
+          updated_at?: string
+        }
+        Update: {
+          applied_date?: string
+          company?: string
+          created_at?: string
+          id?: string
+          location?: string
+          notes?: string | null
+          role?: string
+          status?: Database["public"]["Enums"]["app_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      timeline_events: {
+        Row: {
+          application_id: string
+          created_at: string
+          event: string
+          event_date: string
+          id: string
+          status: Database["public"]["Enums"]["app_status"] | null
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          event: string
+          event_date?: string
+          id?: string
+          status?: Database["public"]["Enums"]["app_status"] | null
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          event?: string
+          event_date?: string
+          id?: string
+          status?: Database["public"]["Enums"]["app_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_events_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +93,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_status:
+        | "Applied"
+        | "Under Review"
+        | "OA Received"
+        | "Interview"
+        | "Rejected"
+        | "Offer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +226,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_status: [
+        "Applied",
+        "Under Review",
+        "OA Received",
+        "Interview",
+        "Rejected",
+        "Offer",
+      ],
+    },
   },
 } as const
