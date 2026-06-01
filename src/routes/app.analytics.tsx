@@ -1,12 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  applications, funnel, monthlyApplications, statusDistribution, stats,
-} from "@/lib/dummy-data";
-import {
   Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { STATUSES, type Application } from "@/lib/applications";
 
 export const Route = createFileRoute("/app/analytics")({
   head: () => ({ meta: [{ title: "Analytics — Inboxly" }] }),
@@ -16,17 +15,62 @@ export const Route = createFileRoute("/app/analytics")({
 const COLORS = ["#94a3b8", "#3b82f6", "#f59e0b", "#8b5cf6", "#ef4444", "#10b981"];
 
 function AnalyticsPage() {
-  const interviewRate = Math.round((stats.interviews / stats.total) * 100);
-  const offerRate = Math.round((stats.offers / stats.total) * 100);
+  const [apps, setApps] = useState<Application[]>([]);
+
+  useEffect(() => {
+    supabase.from("applications").select("*").then(({ data }) => {
+      setApps((data as Application[] | null) ?? []);
+    });
+  }, []);
+
+  const stats = useMemo(() => {
+    const total = apps.length;
+    const responded = apps.filter((a) => a.status !== "Applied").length;
+    const interviews = apps.filter((a) => ["Interview", "Offer"].includes(a.status)).length;
+    const offers = apps.filter((a) => a.status === "Offer").length;
+    return {
+      total,
+      responseRate: total ? Math.round((responded / total) * 100) : 0,
+      interviewRate: total ? Math.round((interviews / total) * 100) : 0,
+      offerRate: total ? Math.round((offers / total) * 100) : 0,
+    };
+  }, [apps]);
+
+  const monthly = useMemo(() => {
+    const map = new Map<string, number>();
+    apps.forEach((a) => {
+      const d = new Date(a.applied_date);
+      const key = d.toLocaleString("en-US", { month: "short", year: "2-digit" });
+      map.set(key, (map.get(key) || 0) + 1);
+    });
+    return Array.from(map.entries()).map(([month, count]) => ({ month, count })).reverse();
+  }, [apps]);
+
+  const statusDist = useMemo(
+    () => STATUSES.map((s) => ({ name: s, value: apps.filter((a) => a.status === s).length })),
+    [apps],
+  );
 
   const topCompanies = useMemo(() => {
     const groups: Record<string, number> = {};
-    applications.forEach((a) => (groups[a.company] = (groups[a.company] || 0) + 1));
-    return Object.entries(groups)
-      .map(([company, count]) => ({ company, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
-  }, []);
+    apps.forEach((a) => (groups[a.company] = (groups[a.company] || 0) + 1));
+    return Object.entries(groups).map(([company, count]) => ({ company, count })).sort((a, b) => b.count - a.count).slice(0, 6);
+  }, [apps]);
+
+  const funnel = useMemo(() => {
+    const submitted = apps.length;
+    const responded = apps.filter((a) => a.status !== "Applied").length;
+    const oas = apps.filter((a) => ["OA Received", "Interview", "Offer"].includes(a.status)).length;
+    const interviews = apps.filter((a) => ["Interview", "Offer"].includes(a.status)).length;
+    const offers = apps.filter((a) => a.status === "Offer").length;
+    return [
+      { label: "Applications", value: submitted },
+      { label: "Responses", value: responded },
+      { label: "OAs", value: oas },
+      { label: "Interviews", value: interviews },
+      { label: "Offers", value: offers },
+    ];
+  }, [apps]);
 
   return (
     <div className="space-y-8">
@@ -39,8 +83,8 @@ function AnalyticsPage() {
         {[
           { l: "Applications Submitted", v: stats.total },
           { l: "Response Rate", v: `${stats.responseRate}%` },
-          { l: "Interview Rate", v: `${interviewRate}%` },
-          { l: "Offer Rate", v: `${offerRate}%` },
+          { l: "Interview Rate", v: `${stats.interviewRate}%` },
+          { l: "Offer Rate", v: `${stats.offerRate}%` },
         ].map((c) => (
           <Card key={c.l}>
             <CardContent className="p-5">
@@ -56,10 +100,10 @@ function AnalyticsPage() {
           <CardHeader><CardTitle className="text-base">Applications per Month</CardTitle></CardHeader>
           <CardContent className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyApplications}>
+              <BarChart data={monthly}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
                   cursor={{ fill: "var(--muted)" }}
@@ -75,14 +119,14 @@ function AnalyticsPage() {
           <CardContent className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={statusDistribution} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={2}>
-                  {statusDistribution.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <Pie data={statusDist} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90} paddingAngle={2}>
+                  {statusDist.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} />
               </PieChart>
             </ResponsiveContainer>
             <div className="-mt-4 grid grid-cols-3 gap-2 text-xs">
-              {statusDistribution.map((s, i) => (
+              {statusDist.map((s, i) => (
                 <div key={s.name} className="flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
                   <span className="text-muted-foreground">{s.name}</span>
@@ -98,7 +142,7 @@ function AnalyticsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topCompanies} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-                <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+                <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                 <YAxis type="category" dataKey="company" stroke="var(--muted-foreground)" fontSize={12} tickLine={false} axisLine={false} width={80} />
                 <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} cursor={{ fill: "var(--muted)" }} />
                 <Bar dataKey="count" fill="var(--primary)" radius={[0, 6, 6, 0]} />
@@ -111,7 +155,8 @@ function AnalyticsPage() {
           <CardHeader><CardTitle className="text-base">Interview Conversion Funnel</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {funnel.map((f) => {
-              const pct = Math.round((f.value / funnel[0].value) * 100);
+              const base = funnel[0].value || 1;
+              const pct = Math.round((f.value / base) * 100);
               return (
                 <div key={f.label}>
                   <div className="flex items-center justify-between text-sm">

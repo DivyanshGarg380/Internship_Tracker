@@ -69,8 +69,8 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <div className="rounded-md border border-sidebar-border bg-sidebar-accent/40 p-3 text-xs text-sidebar-foreground/70">
-          <p className="font-medium text-sidebar-foreground">Gmail connected</p>
-          <p className="mt-0.5 truncate">himynameisdivyansh@gmail.com</p>
+          <p className="font-medium text-sidebar-foreground">Inboxly</p>
+          <p className="mt-0.5 truncate">Personal tracker · AI-powered</p>
         </div>
       </SidebarFooter>
     </Sidebar>

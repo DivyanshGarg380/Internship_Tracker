@@ -1,4 +1,4 @@
-import type { Status } from "@/lib/dummy-data";
+import type { Status } from "@/lib/applications";
 import { cn } from "@/lib/utils";
 
 const styles: Record<Status, string> = {
