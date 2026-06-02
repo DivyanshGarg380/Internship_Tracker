@@ -11,10 +11,7 @@ import {
   FileText,
   Save,
   Printer,
-  RefreshCw,
 } from "lucide-react";
-// @ts-expect-error - latex.js ships without bundled types
-import { HtmlGenerator, parse } from "latex.js";
 
 export const Route = createFileRoute("/app/resume")({
   head: () => ({
@@ -74,10 +71,7 @@ Relevant coursework: Algorithms, Distributed Systems, Machine Learning
 function ResumePage() {
   const [tex, setTex] = useState<string>(DEFAULT_TEX);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
-  const [compiled, setCompiled] = useState<{ html: string; css: string } | null>(null);
-  const [compileError, setCompileError] = useState<string | null>(null);
-  const [isCompiling, setIsCompiling] = useState(false);
-  const [autoCompile, setAutoCompile] = useState(true);
+  const [debouncedTex, setDebouncedTex] = useState<string>(DEFAULT_TEX);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -106,41 +100,13 @@ function ResumePage() {
 
   const lineCount = useMemo(() => tex.split("\n").length, [tex]);
 
-  const compile = useMemo(
-    () => (source: string) => {
-      setIsCompiling(true);
-      try {
-        const generator = new HtmlGenerator({ hyphenate: false });
-        const doc = parse(source, { generator }).htmlDocument();
-        const body = doc.body?.innerHTML ?? "";
-        const styleNodes = Array.from(
-          doc.head?.querySelectorAll("style, link[rel='stylesheet']") ?? [],
-        ) as Element[];
-        const css = styleNodes
-          .map((n) => {
-            if (n.tagName === "STYLE") return n.textContent ?? "";
-            const href = (n as HTMLLinkElement).href;
-            return `@import url("${href}");`;
-          })
-          .join("\n");
-        setCompiled({ html: body, css });
-        setCompileError(null);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        setCompileError(msg);
-      } finally {
-        setIsCompiling(false);
-      }
-    },
-    [],
-  );
-
-  // Auto-compile (debounced) when source changes
+  // Debounce source updates before rebuilding the iframe doc
   useEffect(() => {
-    if (!autoCompile) return;
-    const id = setTimeout(() => compile(tex), 400);
+    const id = setTimeout(() => setDebouncedTex(tex), 500);
     return () => clearTimeout(id);
-  }, [tex, autoCompile, compile]);
+  }, [tex]);
+
+  const previewDoc = useMemo(() => buildPreviewDoc(debouncedTex), [debouncedTex]);
 
   const onDownload = () => {
     const blob = new Blob([tex], { type: "application/x-tex" });
@@ -227,9 +193,6 @@ function ResumePage() {
           <Button variant="outline" size="sm" onClick={onReset}>
             <RotateCcw className="mr-1.5 h-4 w-4" /> Reset
           </Button>
-          <Button variant="outline" size="sm" onClick={() => compile(tex)} disabled={isCompiling}>
-            <RefreshCw className={`mr-1.5 h-4 w-4 ${isCompiling ? "animate-spin" : ""}`} /> Recompile
-          </Button>
           <Button size="sm" onClick={onPrint}>
             <Printer className="mr-1.5 h-4 w-4" /> Print / Save PDF
           </Button>
@@ -243,15 +206,6 @@ function ResumePage() {
               <FileText className="h-3.5 w-3.5" /> resume.tex
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <label className="flex cursor-pointer items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={autoCompile}
-                  onChange={(e) => setAutoCompile(e.target.checked)}
-                  className="h-3 w-3 accent-current"
-                />
-                Auto-compile
-              </label>
               <span>{lineCount} lines</span>
             </div>
           </div>
@@ -276,22 +230,16 @@ function ResumePage() {
                 <TabsTrigger value="raw" className="text-xs">Raw</TabsTrigger>
               </TabsList>
               <span className="text-xs text-muted-foreground">
-                {compileError ? "Compile error" : isCompiling ? "Compiling…" : "Compiled in-browser"}
+                Compiled in-browser
               </span>
             </div>
             <TabsContent value="preview" className="m-0 flex-1 overflow-hidden bg-muted/30">
-              {compileError ? (
-                <pre className="m-4 max-h-full overflow-auto rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
-                  {compileError}
-                </pre>
-              ) : (
-                <iframe
-                  ref={iframeRef}
-                  title="Resume preview"
-                  className="h-[calc(100vh-280px)] min-h-[480px] w-full border-0 bg-white"
-                  srcDoc={buildPreviewDoc(compiled)}
-                />
-              )}
+              <iframe
+                ref={iframeRef}
+                title="Resume preview"
+                className="h-[calc(100vh-280px)] min-h-[480px] w-full border-0 bg-white"
+                srcDoc={previewDoc}
+              />
             </TabsContent>
             <TabsContent value="raw" className="m-0 flex-1 overflow-auto">
               <pre className="whitespace-pre-wrap break-words p-4 font-mono text-xs text-muted-foreground">
@@ -319,20 +267,49 @@ function LineGutter({ count }: { count: number }) {
   );
 }
 
-function buildPreviewDoc(compiled: { html: string; css: string } | null): string {
-  const body = compiled?.html ?? '<p style="color:#888;font-family:sans-serif;padding:2rem">Compiling…</p>';
-  const css = compiled?.css ?? "";
-  return `<!doctype html><html><head><meta charset="utf-8"/>
+function buildPreviewDoc(source: string): string {
+  // Compile LaTeX entirely inside the iframe by loading latex.js from a CDN.
+  // This avoids bundling latex.js through Vite (it ships dynamic require() calls
+  // that the dev bundler can't statically analyze).
+  const encoded = btoa(unescape(encodeURIComponent(source)));
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/latex.js@0.12.6/dist/css/article.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/latex.js@0.12.6/dist/css/book.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/>
 <style>
   html,body{margin:0;background:#f4f4f5}
-  body{padding:32px 16px;font-family: 'Latin Modern Roman', 'Times New Roman', serif}
-  .page{max-width:780px;margin:0 auto;background:#fff;padding:56px 64px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #e4e4e7;border-radius:4px;color:#111}
-  a{color:#2563eb}
+  body{padding:32px 16px;font-family:'Latin Modern Roman','Times New Roman',serif;color:#111}
+  #page{max-width:820px;margin:0 auto;background:#fff;padding:56px 64px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #e4e4e7;border-radius:4px}
+  #page a{color:#2563eb}
+  #err{margin:0 auto;max-width:820px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:14px 18px;border-radius:6px;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap}
   @media print{
-    html,body{background:#fff}
-    body{padding:0}
-    .page{box-shadow:none;border:0;padding:0;max-width:none}
+    html,body{background:#fff;padding:0}
+    #page{box-shadow:none;border:0;padding:0;max-width:none;border-radius:0}
   }
-  ${css}
-</style></head><body><div class="page">${body}</div></body></html>`;
+</style>
+</head>
+<body>
+<div id="page"><div style="color:#888;font-family:sans-serif">Compiling…</div></div>
+<script type="module">
+  const SRC = decodeURIComponent(escape(atob(${JSON.stringify(encoded)})));
+  const page = document.getElementById('page');
+  try {
+    const mod = await import('https://cdn.jsdelivr.net/npm/latex.js@0.12.6/dist/latex.mjs');
+    const generator = new mod.HtmlGenerator({ hyphenate: false });
+    const doc = mod.parse(SRC, { generator }).htmlDocument();
+    // Pull in styles that latex.js generated into the iframe's head
+    document.head.querySelectorAll('style[data-latexjs],link[data-latexjs]').forEach(n=>n.remove());
+    doc.head.querySelectorAll('style,link[rel=stylesheet]').forEach(n=>{
+      const c = n.cloneNode(true); c.setAttribute('data-latexjs','1'); document.head.appendChild(c);
+    });
+    page.innerHTML = '';
+    while (doc.body.firstChild) page.appendChild(doc.body.firstChild);
+  } catch (err) {
+    page.outerHTML = '<pre id="err">'+ String(err && err.message || err).replace(/[<>&]/g, c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c])) +'</pre>';
+  }
+</script>
+</body></html>`;
 }
