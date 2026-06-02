@@ -11,10 +11,7 @@ import {
   FileText,
   Save,
   Printer,
-  RefreshCw,
 } from "lucide-react";
-// @ts-expect-error - latex.js ships without bundled types
-import { HtmlGenerator, parse } from "latex.js";
 
 export const Route = createFileRoute("/app/resume")({
   head: () => ({
