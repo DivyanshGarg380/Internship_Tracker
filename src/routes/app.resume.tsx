@@ -115,7 +115,7 @@ function ResumePage() {
         const body = doc.body?.innerHTML ?? "";
         const styleNodes = Array.from(
           doc.head?.querySelectorAll("style, link[rel='stylesheet']") ?? [],
-        );
+        ) as Element[];
         const css = styleNodes
           .map((n) => {
             if (n.tagName === "STYLE") return n.textContent ?? "";
