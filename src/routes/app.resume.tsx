@@ -267,20 +267,49 @@ function LineGutter({ count }: { count: number }) {
   );
 }
 
-function buildPreviewDoc(compiled: { html: string; css: string } | null): string {
-  const body = compiled?.html ?? '<p style="color:#888;font-family:sans-serif;padding:2rem">Compiling…</p>';
-  const css = compiled?.css ?? "";
-  return `<!doctype html><html><head><meta charset="utf-8"/>
+function buildPreviewDoc(source: string): string {
+  // Compile LaTeX entirely inside the iframe by loading latex.js from a CDN.
+  // This avoids bundling latex.js through Vite (it ships dynamic require() calls
+  // that the dev bundler can't statically analyze).
+  const encoded = btoa(unescape(encodeURIComponent(source)));
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/latex.js@0.12.6/dist/css/article.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/latex.js@0.12.6/dist/css/book.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/>
 <style>
   html,body{margin:0;background:#f4f4f5}
-  body{padding:32px 16px;font-family: 'Latin Modern Roman', 'Times New Roman', serif}
-  .page{max-width:780px;margin:0 auto;background:#fff;padding:56px 64px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #e4e4e7;border-radius:4px;color:#111}
-  a{color:#2563eb}
+  body{padding:32px 16px;font-family:'Latin Modern Roman','Times New Roman',serif;color:#111}
+  #page{max-width:820px;margin:0 auto;background:#fff;padding:56px 64px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #e4e4e7;border-radius:4px}
+  #page a{color:#2563eb}
+  #err{margin:0 auto;max-width:820px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;padding:14px 18px;border-radius:6px;font-family:ui-monospace,Menlo,monospace;font-size:12px;white-space:pre-wrap}
   @media print{
-    html,body{background:#fff}
-    body{padding:0}
-    .page{box-shadow:none;border:0;padding:0;max-width:none}
+    html,body{background:#fff;padding:0}
+    #page{box-shadow:none;border:0;padding:0;max-width:none;border-radius:0}
   }
-  ${css}
-</style></head><body><div class="page">${body}</div></body></html>`;
+</style>
+</head>
+<body>
+<div id="page"><div style="color:#888;font-family:sans-serif">Compiling…</div></div>
+<script type="module">
+  const SRC = decodeURIComponent(escape(atob(${JSON.stringify(encoded)})));
+  const page = document.getElementById('page');
+  try {
+    const mod = await import('https://cdn.jsdelivr.net/npm/latex.js@0.12.6/dist/latex.mjs');
+    const generator = new mod.HtmlGenerator({ hyphenate: false });
+    const doc = mod.parse(SRC, { generator }).htmlDocument();
+    // Pull in styles that latex.js generated into the iframe's head
+    document.head.querySelectorAll('style[data-latexjs],link[data-latexjs]').forEach(n=>n.remove());
+    doc.head.querySelectorAll('style,link[rel=stylesheet]').forEach(n=>{
+      const c = n.cloneNode(true); c.setAttribute('data-latexjs','1'); document.head.appendChild(c);
+    });
+    page.innerHTML = '';
+    while (doc.body.firstChild) page.appendChild(doc.body.firstChild);
+  } catch (err) {
+    page.outerHTML = '<pre id="err">'+ String(err && err.message || err).replace(/[<>&]/g, c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c])) +'</pre>';
+  }
+</script>
+</body></html>`;
 }
