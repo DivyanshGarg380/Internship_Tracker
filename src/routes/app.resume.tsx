@@ -8,10 +8,13 @@ import {
   Download,
   Copy,
   RotateCcw,
-  ExternalLink,
   FileText,
   Save,
+  Printer,
+  RefreshCw,
 } from "lucide-react";
+// @ts-expect-error - latex.js ships without bundled types
+import { HtmlGenerator, parse } from "latex.js";
 
 export const Route = createFileRoute("/app/resume")({
   head: () => ({
@@ -25,22 +28,14 @@ export const Route = createFileRoute("/app/resume")({
 
 const STORAGE_KEY = "inboxly:resume:tex";
 
-const DEFAULT_TEX = String.raw`\documentclass[11pt,a4paper]{article}
-\usepackage[margin=0.75in]{geometry}
-\usepackage{enumitem}
+const DEFAULT_TEX = String.raw`\documentclass{article}
 \usepackage{hyperref}
-\usepackage{titlesec}
-
-\titleformat{\section}{\large\bfseries\uppercase}{}{0em}{}[\titlerule]
-\titlespacing{\section}{0pt}{10pt}{6pt}
-\setlist[itemize]{leftmargin=*, itemsep=2pt, topsep=2pt}
-\pagestyle{empty}
 
 \begin{document}
 
 \begin{center}
   {\Huge \textbf{Alex Kim}} \\[4pt]
-  Stanford, CA $\cdot$ alex@stanford.edu $\cdot$ (555) 123-4567 \\
+  Stanford, CA \textbar{} alex@stanford.edu \textbar{} (555) 123-4567 \\
   \href{https://github.com/alexk}{github.com/alexk} $\cdot$ \href{https://linkedin.com/in/alexk}{linkedin.com/in/alexk}
 \end{center}
 
@@ -79,7 +74,12 @@ Relevant coursework: Algorithms, Distributed Systems, Machine Learning
 function ResumePage() {
   const [tex, setTex] = useState<string>(DEFAULT_TEX);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [compiled, setCompiled] = useState<{ html: string; css: string } | null>(null);
+  const [compileError, setCompileError] = useState<string | null>(null);
+  const [isCompiling, setIsCompiling] = useState(false);
+  const [autoCompile, setAutoCompile] = useState(true);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -105,6 +105,42 @@ function ResumePage() {
   }, [tex]);
 
   const lineCount = useMemo(() => tex.split("\n").length, [tex]);
+
+  const compile = useMemo(
+    () => (source: string) => {
+      setIsCompiling(true);
+      try {
+        const generator = new HtmlGenerator({ hyphenate: false });
+        const doc = parse(source, { generator }).htmlDocument();
+        const body = doc.body?.innerHTML ?? "";
+        const styleNodes = Array.from(
+          doc.head?.querySelectorAll("style, link[rel='stylesheet']") ?? [],
+        ) as Element[];
+        const css = styleNodes
+          .map((n) => {
+            if (n.tagName === "STYLE") return n.textContent ?? "";
+            const href = (n as HTMLLinkElement).href;
+            return `@import url("${href}");`;
+          })
+          .join("\n");
+        setCompiled({ html: body, css });
+        setCompileError(null);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setCompileError(msg);
+      } finally {
+        setIsCompiling(false);
+      }
+    },
+    [],
+  );
+
+  // Auto-compile (debounced) when source changes
+  useEffect(() => {
+    if (!autoCompile) return;
+    const id = setTimeout(() => compile(tex), 400);
+    return () => clearTimeout(id);
+  }, [tex, autoCompile, compile]);
 
   const onDownload = () => {
     const blob = new Blob([tex], { type: "application/x-tex" });
@@ -140,9 +176,15 @@ function ResumePage() {
     }
   };
 
-  // Submits the .tex to Overleaf which compiles it to a real PDF in a new tab.
-  const overleafFormRef = useRef<HTMLFormElement>(null);
-  const onOpenInOverleaf = () => overleafFormRef.current?.submit();
+  const onPrint = () => {
+    const iframe = iframeRef.current;
+    if (!iframe?.contentWindow) {
+      toast.error("Preview not ready");
+      return;
+    }
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  };
 
   // Tab support inside the textarea
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -165,7 +207,7 @@ function ResumePage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Resume</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Edit your resume in LaTeX. Autosaved locally
+            Edit your resume in LaTeX — compiled live in your browser. Autosaved locally
             {savedAt && (
               <span> · last saved {savedAt.toLocaleTimeString()}</span>
             )}
@@ -185,24 +227,14 @@ function ResumePage() {
           <Button variant="outline" size="sm" onClick={onReset}>
             <RotateCcw className="mr-1.5 h-4 w-4" /> Reset
           </Button>
-          <Button size="sm" onClick={onOpenInOverleaf}>
-            <ExternalLink className="mr-1.5 h-4 w-4" /> Compile in Overleaf
+          <Button variant="outline" size="sm" onClick={() => compile(tex)} disabled={isCompiling}>
+            <RefreshCw className={`mr-1.5 h-4 w-4 ${isCompiling ? "animate-spin" : ""}`} /> Recompile
+          </Button>
+          <Button size="sm" onClick={onPrint}>
+            <Printer className="mr-1.5 h-4 w-4" /> Print / Save PDF
           </Button>
         </div>
       </div>
-
-      {/* Hidden form that POSTs the snippet to Overleaf for real PDF compilation */}
-      <form
-        ref={overleafFormRef}
-        action="https://www.overleaf.com/docs"
-        method="POST"
-        target="_blank"
-        className="hidden"
-      >
-        <input type="hidden" name="snip" value={tex} />
-        <input type="hidden" name="snip_name" value="resume.tex" />
-        <input type="hidden" name="engine" value="pdflatex" />
-      </form>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="overflow-hidden p-0">
@@ -210,7 +242,18 @@ function ResumePage() {
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <FileText className="h-3.5 w-3.5" /> resume.tex
             </div>
-            <div className="text-xs text-muted-foreground">{lineCount} lines</div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <label className="flex cursor-pointer items-center gap-1.5">
+                <input
+                  type="checkbox"
+                  checked={autoCompile}
+                  onChange={(e) => setAutoCompile(e.target.checked)}
+                  className="h-3 w-3 accent-current"
+                />
+                Auto-compile
+              </label>
+              <span>{lineCount} lines</span>
+            </div>
           </div>
           <div className="relative flex h-[calc(100vh-280px)] min-h-[480px]">
             <LineGutter count={lineCount} />
@@ -233,13 +276,22 @@ function ResumePage() {
                 <TabsTrigger value="raw" className="text-xs">Raw</TabsTrigger>
               </TabsList>
               <span className="text-xs text-muted-foreground">
-                Approximate render · use Overleaf for the real PDF
+                {compileError ? "Compile error" : isCompiling ? "Compiling…" : "Compiled in-browser"}
               </span>
             </div>
-            <TabsContent value="preview" className="m-0 flex-1 overflow-auto bg-muted/30 p-6">
-              <div className="mx-auto max-w-2xl rounded-md border border-border bg-white p-10 text-[13px] leading-relaxed text-zinc-900 shadow-sm">
-                <LatexPreview source={tex} />
-              </div>
+            <TabsContent value="preview" className="m-0 flex-1 overflow-hidden bg-muted/30">
+              {compileError ? (
+                <pre className="m-4 max-h-full overflow-auto rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+                  {compileError}
+                </pre>
+              ) : (
+                <iframe
+                  ref={iframeRef}
+                  title="Resume preview"
+                  className="h-[calc(100vh-280px)] min-h-[480px] w-full border-0 bg-white"
+                  srcDoc={buildPreviewDoc(compiled)}
+                />
+              )}
             </TabsContent>
             <TabsContent value="raw" className="m-0 flex-1 overflow-auto">
               <pre className="whitespace-pre-wrap break-words p-4 font-mono text-xs text-muted-foreground">
@@ -267,142 +319,20 @@ function LineGutter({ count }: { count: number }) {
   );
 }
 
-/**
- * Minimal LaTeX-to-HTML preview tailored to resume-style documents.
- * Not a full LaTeX engine — supports common commands used in resumes.
- */
-function LatexPreview({ source }: { source: string }) {
-  const html = useMemo(() => renderLatex(source), [source]);
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
-}
-
-function escapeHtml(s: string) {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-function renderLatex(input: string): string {
-  // Extract the document body
-  const beginIdx = input.indexOf("\\begin{document}");
-  const endIdx = input.indexOf("\\end{document}");
-  let body =
-    beginIdx >= 0 && endIdx > beginIdx
-      ? input.slice(beginIdx + "\\begin{document}".length, endIdx)
-      : input;
-
-  // Strip comments
-  body = body.replace(/(^|[^\\])%[^\n]*/g, "$1");
-
-  // Handle environments
-  body = body.replace(
-    /\\begin\{center\}([\s\S]*?)\\end\{center\}/g,
-    (_, inner) => `<div style="text-align:center">${inner}</div>`,
-  );
-
-  body = body.replace(
-    /\\begin\{itemize\}(?:\[[^\]]*\])?([\s\S]*?)\\end\{itemize\}/g,
-    (_, inner: string) => {
-      const items = inner
-        .split(/\\item\s+/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map((it) => `<li>${it}</li>`) // commands inside processed below
-        .join("");
-      return `<ul style="margin:6px 0 10px 20px;list-style:disc">${items}</ul>`;
-    },
-  );
-
-  body = body.replace(
-    /\\begin\{enumerate\}(?:\[[^\]]*\])?([\s\S]*?)\\end\{enumerate\}/g,
-    (_, inner: string) => {
-      const items = inner
-        .split(/\\item\s+/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map((it) => `<li>${it}</li>`)
-        .join("");
-      return `<ol style="margin:6px 0 10px 22px;list-style:decimal">${items}</ol>`;
-    },
-  );
-
-  // Escape HTML now (after structural transforms inserted safe tags)
-  // We need to escape only the textual parts. Simpler: escape the whole thing
-  // then unescape our injected tags by working with a token approach.
-  // Use a token map.
-  const tokens: string[] = [];
-  body = body.replace(/<[^>]+>/g, (m) => {
-    tokens.push(m);
-    return `\u0000${tokens.length - 1}\u0000`;
-  });
-  body = escapeHtml(body);
-  body = body.replace(/\u0000(\d+)\u0000/g, (_, i) => tokens[Number(i)]);
-
-  // Sections
-  body = body.replace(
-    /\\section\*?\{([^}]*)\}/g,
-    (_, t) =>
-      `<h2 style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;border-bottom:1px solid #d4d4d8;margin:14px 0 6px;padding-bottom:2px">${t}</h2>`,
-  );
-  body = body.replace(
-    /\\subsection\*?\{([^}]*)\}/g,
-    (_, t) => `<h3 style="font-size:13px;font-weight:600;margin:10px 0 4px">${t}</h3>`,
-  );
-
-  // Text styling
-  body = body.replace(/\\textbf\{([^}]*)\}/g, "<strong>$1</strong>");
-  body = body.replace(/\\textit\{([^}]*)\}/g, "<em>$1</em>");
-  body = body.replace(/\\emph\{([^}]*)\}/g, "<em>$1</em>");
-  body = body.replace(/\\underline\{([^}]*)\}/g, "<u>$1</u>");
-  body = body.replace(/\\uppercase\{([^}]*)\}/g, (_, t) => String(t).toUpperCase());
-
-  // Sizing macros (very rough)
-  body = body.replace(/\{\\Huge\s+([^}]*)\}/g, '<span style="font-size:26px;font-weight:700">$1</span>');
-  body = body.replace(/\{\\LARGE\s+([^}]*)\}/g, '<span style="font-size:20px">$1</span>');
-  body = body.replace(/\{\\Large\s+([^}]*)\}/g, '<span style="font-size:17px">$1</span>');
-  body = body.replace(/\{\\large\s+([^}]*)\}/g, '<span style="font-size:15px">$1</span>');
-  body = body.replace(/\{\\small\s+([^}]*)\}/g, '<span style="font-size:11px">$1</span>');
-
-  // Links
-  body = body.replace(
-    /\\href\{([^}]*)\}\{([^}]*)\}/g,
-    (_, url, label) => `<a href="${url}" style="color:#2563eb;text-decoration:underline" target="_blank" rel="noreferrer">${label}</a>`,
-  );
-  body = body.replace(
-    /\\url\{([^}]*)\}/g,
-    (_, url) => `<a href="${url}" style="color:#2563eb;text-decoration:underline" target="_blank" rel="noreferrer">${url}</a>`,
-  );
-
-  // \hfill -> push right
-  body = body.replace(
-    /([^\n]*?)\\hfill\s*([^\n]*)/g,
-    (_, l, r) => `<div style="display:flex;justify-content:space-between;gap:12px"><span>${l}</span><span>${r}</span></div>`,
-  );
-
-  // Math-ish: $\cdot$ and $\bullet$
-  body = body.replace(/\$\\cdot\$/g, "·");
-  body = body.replace(/\$\\bullet\$/g, "•");
-  body = body.replace(/\\&/g, "&amp;");
-  body = body.replace(/\\%/g, "%");
-  body = body.replace(/\\\$/g, "$");
-  body = body.replace(/\\_/g, "_");
-  body = body.replace(/~/g, "&nbsp;");
-
-  // Line breaks: \\ or \\[Xpt]
-  body = body.replace(/\\\\(\[[^\]]*\])?/g, "<br/>");
-
-  // Drop remaining unsupported commands like \pagestyle{...}, \titleformat{...}, etc.
-  body = body.replace(/\\[a-zA-Z]+\*?(\[[^\]]*\])?\{[^}]*\}/g, "");
-  body = body.replace(/\\[a-zA-Z]+\*?(\[[^\]]*\])?/g, "");
-
-  // Paragraphs from blank lines
-  const paragraphs = body
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map((p) => `<p style="margin:6px 0">${p.replace(/\n/g, " ")}</p>`)
-    .join("");
-
-  return paragraphs;
+function buildPreviewDoc(compiled: { html: string; css: string } | null): string {
+  const body = compiled?.html ?? '<p style="color:#888;font-family:sans-serif;padding:2rem">Compiling…</p>';
+  const css = compiled?.css ?? "";
+  return `<!doctype html><html><head><meta charset="utf-8"/>
+<style>
+  html,body{margin:0;background:#f4f4f5}
+  body{padding:32px 16px;font-family: 'Latin Modern Roman', 'Times New Roman', serif}
+  .page{max-width:780px;margin:0 auto;background:#fff;padding:56px 64px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid #e4e4e7;border-radius:4px;color:#111}
+  a{color:#2563eb}
+  @media print{
+    html,body{background:#fff}
+    body{padding:0}
+    .page{box-shadow:none;border:0;padding:0;max-width:none}
+  }
+  ${css}
+</style></head><body><div class="page">${body}</div></body></html>`;
 }
