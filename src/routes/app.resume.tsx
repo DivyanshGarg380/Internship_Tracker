@@ -71,10 +71,7 @@ Relevant coursework: Algorithms, Distributed Systems, Machine Learning
 function ResumePage() {
   const [tex, setTex] = useState<string>(DEFAULT_TEX);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
-  const [compiled, setCompiled] = useState<{ html: string; css: string } | null>(null);
-  const [compileError, setCompileError] = useState<string | null>(null);
-  const [isCompiling, setIsCompiling] = useState(false);
-  const [autoCompile, setAutoCompile] = useState(true);
+  const [debouncedTex, setDebouncedTex] = useState<string>(DEFAULT_TEX);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -103,41 +100,13 @@ function ResumePage() {
 
   const lineCount = useMemo(() => tex.split("\n").length, [tex]);
 
-  const compile = useMemo(
-    () => (source: string) => {
-      setIsCompiling(true);
-      try {
-        const generator = new HtmlGenerator({ hyphenate: false });
-        const doc = parse(source, { generator }).htmlDocument();
-        const body = doc.body?.innerHTML ?? "";
-        const styleNodes = Array.from(
-          doc.head?.querySelectorAll("style, link[rel='stylesheet']") ?? [],
-        ) as Element[];
-        const css = styleNodes
-          .map((n) => {
-            if (n.tagName === "STYLE") return n.textContent ?? "";
-            const href = (n as HTMLLinkElement).href;
-            return `@import url("${href}");`;
-          })
-          .join("\n");
-        setCompiled({ html: body, css });
-        setCompileError(null);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        setCompileError(msg);
-      } finally {
-        setIsCompiling(false);
-      }
-    },
-    [],
-  );
-
-  // Auto-compile (debounced) when source changes
+  // Debounce source updates before rebuilding the iframe doc
   useEffect(() => {
-    if (!autoCompile) return;
-    const id = setTimeout(() => compile(tex), 400);
+    const id = setTimeout(() => setDebouncedTex(tex), 500);
     return () => clearTimeout(id);
-  }, [tex, autoCompile, compile]);
+  }, [tex]);
+
+  const previewDoc = useMemo(() => buildPreviewDoc(debouncedTex), [debouncedTex]);
 
   const onDownload = () => {
     const blob = new Blob([tex], { type: "application/x-tex" });
@@ -224,9 +193,6 @@ function ResumePage() {
           <Button variant="outline" size="sm" onClick={onReset}>
             <RotateCcw className="mr-1.5 h-4 w-4" /> Reset
           </Button>
-          <Button variant="outline" size="sm" onClick={() => compile(tex)} disabled={isCompiling}>
-            <RefreshCw className={`mr-1.5 h-4 w-4 ${isCompiling ? "animate-spin" : ""}`} /> Recompile
-          </Button>
           <Button size="sm" onClick={onPrint}>
             <Printer className="mr-1.5 h-4 w-4" /> Print / Save PDF
           </Button>
@@ -240,15 +206,6 @@ function ResumePage() {
               <FileText className="h-3.5 w-3.5" /> resume.tex
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <label className="flex cursor-pointer items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={autoCompile}
-                  onChange={(e) => setAutoCompile(e.target.checked)}
-                  className="h-3 w-3 accent-current"
-                />
-                Auto-compile
-              </label>
               <span>{lineCount} lines</span>
             </div>
           </div>
@@ -273,22 +230,16 @@ function ResumePage() {
                 <TabsTrigger value="raw" className="text-xs">Raw</TabsTrigger>
               </TabsList>
               <span className="text-xs text-muted-foreground">
-                {compileError ? "Compile error" : isCompiling ? "Compiling…" : "Compiled in-browser"}
+                Compiled in-browser
               </span>
             </div>
             <TabsContent value="preview" className="m-0 flex-1 overflow-hidden bg-muted/30">
-              {compileError ? (
-                <pre className="m-4 max-h-full overflow-auto rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
-                  {compileError}
-                </pre>
-              ) : (
-                <iframe
-                  ref={iframeRef}
-                  title="Resume preview"
-                  className="h-[calc(100vh-280px)] min-h-[480px] w-full border-0 bg-white"
-                  srcDoc={buildPreviewDoc(compiled)}
-                />
-              )}
+              <iframe
+                ref={iframeRef}
+                title="Resume preview"
+                className="h-[calc(100vh-280px)] min-h-[480px] w-full border-0 bg-white"
+                srcDoc={previewDoc}
+              />
             </TabsContent>
             <TabsContent value="raw" className="m-0 flex-1 overflow-auto">
               <pre className="whitespace-pre-wrap break-words p-4 font-mono text-xs text-muted-foreground">
