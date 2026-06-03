@@ -228,7 +228,9 @@ function ResumePage() {
                 </TabsTrigger>
               </TabsList>
               <span className="text-xs text-muted-foreground">
-                {rendered.warnings.length ? `${rendered.warnings.length} warning` : "Offline renderer"}
+                {rendered.warnings.length
+                  ? `${rendered.warnings.length} warning`
+                  : "Offline renderer"}
               </span>
             </div>
             <TabsContent value="preview" className="m-0 flex-1 overflow-hidden bg-muted/30">
@@ -339,7 +341,12 @@ function collectWarnings(source: string): string[] {
 
 function extractDocumentBody(source: string) {
   const match = source.match(/\\begin\{document\}([\s\S]*?)\\end\{document\}/);
-  return match?.[1] ?? source.replace(/^\\documentclass(?:\[[^\]]*])?\{[^}]+}\s*/m, "").replace(/^\\usepackage(?:\[[^\]]*])?\{[^}]+}\s*/gm, "");
+  return (
+    match?.[1] ??
+    source
+      .replace(/^\\documentclass(?:\[[^\]]*])?\{[^}]+}\s*/m, "")
+      .replace(/^\\usepackage(?:\[[^\]]*])?\{[^}]+}\s*/gm, "")
+  );
 }
 
 function renderParagraph(line: string) {
@@ -368,7 +375,10 @@ function renderInline(value: string): string {
   let output = escapeHtml(value);
 
   output = replaceCommand(output, "href", (url, text) => {
-    const safeUrl = url.startsWith("http://") || url.startsWith("https://") || url.startsWith("mailto:") ? url : "#";
+    const safeUrl =
+      url.startsWith("http://") || url.startsWith("https://") || url.startsWith("mailto:")
+        ? url
+        : "#";
     return `<a href="${safeUrl}" target="_blank" rel="noreferrer">${text}</a>`;
   });
   output = replaceCommand(output, "textbf", (_unused, text) => `<strong>${text}</strong>`);
@@ -376,10 +386,13 @@ function renderInline(value: string): string {
   output = replaceCommand(output, "emph", (_unused, text) => `<em>${text}</em>`);
   output = replaceCommand(output, "underline", (_unused, text) => `<u>${text}</u>`);
 
-  output = output.replace(/\{\\(Huge|huge|LARGE|Large|large)\s+([\s\S]*?)}/g, (_match, size, content) => {
-    const className = size === "Huge" || size === "huge" ? "huge" : "large";
-    return `<span class="${className}">${content}</span>`;
-  });
+  output = output.replace(
+    /\{\\(Huge|huge|LARGE|Large|large)\s+([\s\S]*?)}/g,
+    (_match, size, content) => {
+      const className = size === "Huge" || size === "huge" ? "huge" : "large";
+      return `<span class="${className}">${content}</span>`;
+    },
+  );
 
   return output
     .replace(/\\textbar\{}/g, "|")
@@ -403,7 +416,9 @@ function replaceCommand(
   replacer: (firstArg: string, secondArg: string) => string,
 ) {
   if (command === "href") {
-    return value.replace(/\\href\{([^}]*)}\{([^}]*)}/g, (_match, firstArg, secondArg) => replacer(firstArg, secondArg));
+    return value.replace(/\\href\{([^}]*)}\{([^}]*)}/g, (_match, firstArg, secondArg) =>
+      replacer(firstArg, secondArg),
+    );
   }
   const pattern = new RegExp(String.raw`\\${command}\{([^{}]*(?:\{[^{}]*}[^{}]*)*)}`, "g");
   return value.replace(pattern, (_match, content) => replacer("", content));
