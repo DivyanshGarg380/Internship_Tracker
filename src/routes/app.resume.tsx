@@ -353,7 +353,7 @@ function renderParagraph(line: string) {
 
 function renderLineBreaks(value: string) {
   return value
-    .split(/\\(?:\[[^\]]*])?\s*\n?|\n/g)
+    .split(/\\\\(?:\[[^\]]*])?\s*\n?|\n/g)
     .map((part) => part.trim())
     .filter(Boolean)
     .map((part) => `<div>${renderInline(stripLineBreak(part))}</div>`)
@@ -361,16 +361,11 @@ function renderLineBreaks(value: string) {
 }
 
 function stripLineBreak(value: string) {
-  return value.replace(/\\(?:\[[^\]]*])?\s*$/g, "").trim();
+  return value.replace(/\\\\(?:\[[^\]]*])?\s*$/g, "").trim();
 }
 
 function renderInline(value: string): string {
   let output = escapeHtml(value);
-
-  output = output.replace(/\{\\(Huge|huge|LARGE|Large|large)\s+([\s\S]*?)}/g, (_match, size, content) => {
-    const className = size === "Huge" || size === "huge" ? "huge" : "large";
-    return `<span class="${className}">${content}</span>`;
-  });
 
   output = replaceCommand(output, "href", (url, text) => {
     const safeUrl = url.startsWith("http://") || url.startsWith("https://") || url.startsWith("mailto:") ? url : "#";
@@ -380,6 +375,11 @@ function renderInline(value: string): string {
   output = replaceCommand(output, "textit", (_unused, text) => `<em>${text}</em>`);
   output = replaceCommand(output, "emph", (_unused, text) => `<em>${text}</em>`);
   output = replaceCommand(output, "underline", (_unused, text) => `<u>${text}</u>`);
+
+  output = output.replace(/\{\\(Huge|huge|LARGE|Large|large)\s+([\s\S]*?)}/g, (_match, size, content) => {
+    const className = size === "Huge" || size === "huge" ? "huge" : "large";
+    return `<span class="${className}">${content}</span>`;
+  });
 
   return output
     .replace(/\\textbar\{}/g, "|")
