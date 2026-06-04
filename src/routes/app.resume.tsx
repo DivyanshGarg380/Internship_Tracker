@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useServerFn } from "@tanstack/react-start";
 import { adviseResume, type ResumeTip } from "@/lib/resume-advice.functions";
+import { scanAts, type AtsScanResult } from "@/lib/ats-scan.functions";
 
 export const Route = createFileRoute("/app/resume")({
   head: () => ({
@@ -80,6 +81,11 @@ function ResumePage() {
   const [advising, setAdvising] = useState(false);
   const [advice, setAdvice] = useState<{ overall_score: number; summary: string; tips: ResumeTip[] } | null>(null);
   const adviseFn = useServerFn(adviseResume);
+  const [jobDesc, setJobDesc] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [atsResult, setAtsResult] = useState<AtsScanResult | null>(null);
+  const [atsFilter, setAtsFilter] = useState<"all" | "missing" | "present">("missing");
+  const scanAtsFn = useServerFn(scanAts);
 
   useEffect(() => {
     try {
@@ -170,6 +176,35 @@ function ResumePage() {
       toast.error("Failed to get AI advice");
     } finally {
       setAdvising(false);
+    }
+  };
+
+  const onScanAts = async () => {
+    if (tex.trim().length < 20) {
+      toast.error("Add more resume content first");
+      return;
+    }
+    if (role.trim().length < 2) {
+      toast.error("Enter a target role above");
+      return;
+    }
+    setScanning(true);
+    try {
+      const result = await scanAtsFn({
+        data: { tex, role: role.trim(), jobDescription: jobDesc.trim() || undefined },
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setAtsResult(result.data);
+      const missing = result.data.keywords.filter((k) => k.status === "missing").length;
+      toast.success(`${result.data.match_score}% match · ${missing} missing keywords`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to scan resume");
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -342,6 +377,109 @@ function ResumePage() {
                   )}
                 </li>
               ))}
+            </ul>
+          </div>
+        )}
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <FileText className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold tracking-tight">ATS Keyword Scanner</h2>
+              <p className="text-xs text-muted-foreground">
+                Match your resume against the target role and surface missing high-signal keywords.
+              </p>
+            </div>
+          </div>
+          <Button size="sm" onClick={onScanAts} disabled={scanning}>
+            {scanning ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1.5 h-4 w-4" />
+            )}
+            {scanning ? "Scanning…" : "Scan keywords"}
+          </Button>
+        </div>
+
+        <div className="mt-3">
+          <textarea
+            value={jobDesc}
+            onChange={(e) => setJobDesc(e.target.value)}
+            placeholder="Optional: paste the job description for a sharper match (uses the Target role above)."
+            className="min-h-[88px] w-full resize-y rounded-md border border-input bg-background px-3 py-2 font-mono text-xs text-foreground outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+        </div>
+
+        {atsResult && (
+          <div className="mt-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/30 p-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                {Math.round(atsResult.match_score)}%
+              </div>
+              <p className="flex-1 text-sm text-foreground">{atsResult.summary}</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {(["missing", "present", "all"] as const).map((f) => {
+                const count =
+                  f === "all"
+                    ? atsResult.keywords.length
+                    : atsResult.keywords.filter((k) => k.status === f).length;
+                return (
+                  <Button
+                    key={f}
+                    variant={atsFilter === f ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setAtsFilter(f)}
+                    className="h-7 text-xs"
+                  >
+                    {f === "all" ? "All" : f === "missing" ? "Missing" : "Present"} · {count}
+                  </Button>
+                );
+              })}
+            </div>
+
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {atsResult.keywords
+                .filter((k) => atsFilter === "all" || k.status === atsFilter)
+                .sort((a, b) => {
+                  const order = { high: 0, medium: 1, low: 2 } as const;
+                  return order[a.importance] - order[b.importance];
+                })
+                .map((k, i) => (
+                  <li
+                    key={`${k.keyword}-${i}`}
+                    className="rounded-md border border-border bg-background p-3 text-sm"
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <span className="font-medium text-foreground">{k.keyword}</span>
+                      <Badge
+                        variant={
+                          k.status === "missing"
+                            ? k.importance === "high"
+                              ? "destructive"
+                              : "default"
+                            : "secondary"
+                        }
+                        className="text-[10px]"
+                      >
+                        {k.status.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {k.category} · {k.importance} priority
+                    </div>
+                    {k.status === "missing" && k.suggestion && (
+                      <p className="mt-2 rounded bg-muted/40 p-2 text-xs italic text-foreground">
+                        💡 {k.suggestion}
+                      </p>
+                    )}
+                  </li>
+                ))}
             </ul>
           </div>
         )}
