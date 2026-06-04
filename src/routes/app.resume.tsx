@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useServerFn } from "@tanstack/react-start";
 import { adviseResume, type ResumeTip } from "@/lib/resume-advice.functions";
+import { scanAts, type AtsScanResult } from "@/lib/ats-scan.functions";
 
 export const Route = createFileRoute("/app/resume")({
   head: () => ({
@@ -80,6 +81,11 @@ function ResumePage() {
   const [advising, setAdvising] = useState(false);
   const [advice, setAdvice] = useState<{ overall_score: number; summary: string; tips: ResumeTip[] } | null>(null);
   const adviseFn = useServerFn(adviseResume);
+  const [jobDesc, setJobDesc] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [atsResult, setAtsResult] = useState<AtsScanResult | null>(null);
+  const [atsFilter, setAtsFilter] = useState<"all" | "missing" | "present">("missing");
+  const scanAtsFn = useServerFn(scanAts);
 
   useEffect(() => {
     try {
@@ -170,6 +176,35 @@ function ResumePage() {
       toast.error("Failed to get AI advice");
     } finally {
       setAdvising(false);
+    }
+  };
+
+  const onScanAts = async () => {
+    if (tex.trim().length < 20) {
+      toast.error("Add more resume content first");
+      return;
+    }
+    if (role.trim().length < 2) {
+      toast.error("Enter a target role above");
+      return;
+    }
+    setScanning(true);
+    try {
+      const result = await scanAtsFn({
+        data: { tex, role: role.trim(), jobDescription: jobDesc.trim() || undefined },
+      });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setAtsResult(result.data);
+      const missing = result.data.keywords.filter((k) => k.status === "missing").length;
+      toast.success(`${result.data.match_score}% match · ${missing} missing keywords`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to scan resume");
+    } finally {
+      setScanning(false);
     }
   };
 
