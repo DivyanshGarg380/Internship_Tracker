@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Copy, FileText, Play, Printer, RotateCcw, Save } from "lucide-react";
+import { Copy, FileText, Play, Printer, RotateCcw, Save, Sparkles, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { useServerFn } from "@tanstack/react-start";
+import { adviseResume, type ResumeTip } from "@/lib/resume-advice.functions";
 
 export const Route = createFileRoute("/app/resume")({
   head: () => ({
@@ -72,6 +76,10 @@ function ResumePage() {
   const [debouncedTex, setDebouncedTex] = useState<string>(DEFAULT_TEX);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [role, setRole] = useState("");
+  const [advising, setAdvising] = useState(false);
+  const [advice, setAdvice] = useState<{ overall_score: number; summary: string; tips: ResumeTip[] } | null>(null);
+  const adviseFn = useServerFn(adviseResume);
 
   useEffect(() => {
     try {
@@ -141,6 +149,28 @@ function ResumePage() {
   const onCompile = () => {
     setDebouncedTex(tex);
     toast.success("Compiled");
+  };
+
+  const onAdvise = async () => {
+    if (tex.trim().length < 20) {
+      toast.error("Add more resume content first");
+      return;
+    }
+    setAdvising(true);
+    try {
+      const result = await adviseFn({ data: { tex, role: role.trim() || undefined } });
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setAdvice(result.data);
+      toast.success(`${result.data.tips.length} tips ready`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to get AI advice");
+    } finally {
+      setAdvising(false);
+    }
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -241,6 +271,81 @@ function ResumePage() {
           </Tabs>
         </Card>
       </div>
+
+      <Card className="p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold tracking-tight">AI Resume Advisor</h2>
+              <p className="text-xs text-muted-foreground">
+                Get targeted tips to boost your callback rate.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              placeholder="Target role (optional) — e.g. SWE Intern at Stripe"
+              className="h-9 w-full sm:w-80"
+            />
+            <Button size="sm" onClick={onAdvise} disabled={advising}>
+              {advising ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-1.5 h-4 w-4" />
+              )}
+              {advising ? "Analyzing…" : "Get AI Tips"}
+            </Button>
+          </div>
+        </div>
+
+        {advice && (
+          <div className="mt-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/30 p-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+                {Math.round(advice.overall_score)}
+              </div>
+              <p className="flex-1 text-sm text-foreground">{advice.summary}</p>
+            </div>
+            <ul className="grid gap-2 sm:grid-cols-2">
+              {advice.tips.map((t, i) => (
+                <li
+                  key={i}
+                  className="rounded-md border border-border bg-background p-3 text-sm"
+                >
+                  <div className="mb-1 flex items-center gap-2">
+                    <Badge
+                      variant={
+                        t.severity === "high"
+                          ? "destructive"
+                          : t.severity === "medium"
+                            ? "default"
+                            : "secondary"
+                      }
+                      className="text-[10px]"
+                    >
+                      {t.severity.toUpperCase()}
+                    </Badge>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t.category}
+                    </span>
+                  </div>
+                  <p className="text-foreground">{t.tip}</p>
+                  {t.target && (
+                    <p className="mt-1 text-xs italic text-muted-foreground">
+                      ↳ {t.target}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
