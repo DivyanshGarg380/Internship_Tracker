@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Copy, FileText, Printer, RotateCcw, Save } from "lucide-react";
+import { Copy, FileText, Play, Printer, RotateCcw, Save } from "lucide-react";
 
 export const Route = createFileRoute("/app/resume")({
   head: () => ({
@@ -138,6 +138,11 @@ function ResumePage() {
     iframe.contentWindow.print();
   };
 
+  const onCompile = () => {
+    setDebouncedTex(tex);
+    toast.success("Compiled");
+  };
+
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key !== "Tab") return;
     e.preventDefault();
@@ -170,6 +175,9 @@ function ResumePage() {
           </Button>
           <Button variant="outline" size="sm" onClick={onReset}>
             <RotateCcw className="mr-1.5 h-4 w-4" /> Reset
+          </Button>
+          <Button variant="outline" size="sm" onClick={onCompile}>
+            <Play className="mr-1.5 h-4 w-4" /> Compile
           </Button>
           <Button size="sm" onClick={onPrint}>
             <Printer className="mr-1.5 h-4 w-4" /> Print / Save PDF
