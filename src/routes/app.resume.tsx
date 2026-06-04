@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Copy, Download, FileText, Printer, RotateCcw, Save } from "lucide-react";
+import { Copy, FileText, Printer, RotateCcw, Save } from "lucide-react";
 
 export const Route = createFileRoute("/app/resume")({
   head: () => ({
@@ -106,16 +106,6 @@ function ResumePage() {
   const rendered = useMemo(() => renderLatexResume(debouncedTex), [debouncedTex]);
   const previewDoc = useMemo(() => buildPreviewDoc(rendered), [rendered]);
 
-  const onDownload = () => {
-    downloadFile("resume.tex", tex, "application/x-tex");
-    toast.success("Downloaded resume.tex");
-  };
-
-  const onDownloadHtml = () => {
-    downloadFile("resume.html", previewDoc, "text/html");
-    toast.success("Downloaded resume.html");
-  };
-
   const onCopy = async () => {
     await navigator.clipboard.writeText(tex);
     toast.success("Copied LaTeX to clipboard");
@@ -177,12 +167,6 @@ function ResumePage() {
           </Button>
           <Button variant="outline" size="sm" onClick={onCopy}>
             <Copy className="mr-1.5 h-4 w-4" /> Copy
-          </Button>
-          <Button variant="outline" size="sm" onClick={onDownload}>
-            <Download className="mr-1.5 h-4 w-4" /> .tex
-          </Button>
-          <Button variant="outline" size="sm" onClick={onDownloadHtml}>
-            <Download className="mr-1.5 h-4 w-4" /> .html
           </Button>
           <Button variant="outline" size="sm" onClick={onReset}>
             <RotateCcw className="mr-1.5 h-4 w-4" /> Reset
@@ -265,18 +249,6 @@ function LineGutter({ count }: { count: number }) {
       ))}
     </div>
   );
-}
-
-function downloadFile(filename: string, content: string, type: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 function renderLatexResume(source: string): RenderResult {
