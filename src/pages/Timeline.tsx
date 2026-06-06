@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "../../supabase/client";
 import type { TimelineEvent } from "@/lib/applications";
 
 type Row = TimelineEvent & { applications: { company: string } | null };

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "../../supabase/client";
 import { type Application, type Status, type TimelineEvent, timeAgo } from "@/lib/applications";
 import { ArrowDown, Briefcase, CheckCircle2, FileText, MessageSquare, Percent, Send } from "lucide-react";
 import { AddApplicationDialog } from "@/components/add-application-dialog";

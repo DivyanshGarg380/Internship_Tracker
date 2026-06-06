@@ -3,7 +3,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "../../supabase/client";
 import { STATUSES, type Application } from "@/lib/applications";
 
 const COLORS = ["#94a3b8", "#3b82f6", "#f59e0b", "#8b5cf6", "#ef4444", "#10b981"];

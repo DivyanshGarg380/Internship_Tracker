@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "../../supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +13,7 @@ import {
 import { STATUSES, type Status } from "@/lib/applications";
 import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { extractEmail } from "@/lib/extract-email.functions";
+import { extractEmail } from "@/lib/extract-email";
 
 type Stage = "input" | "review";
 interface Extracted {
@@ -42,24 +42,29 @@ export function PasteEmailDialog({ onCreated, trigger }: { onCreated?: () => voi
       toast.error("Paste the full email body.");
       return;
     }
+
     setBusy(true);
+
     try {
-      const res = await extractEmail({ data: { email: email.trim().slice(0, 50000) } });
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      const status = (STATUSES as readonly string[]).includes(res.data.status)
-        ? (res.data.status as Status)
+      const res = await extractEmail(
+        email.trim().slice(0, 50000)
+      );
+
+      const status = (STATUSES as readonly string[]).includes(res.status)
+        ? (res.status as Status)
         : "Applied";
+
       setData({
-        company: res.data.company,
-        role: res.data.role,
-        location: res.data.location,
+        company: res.company,
+        role: res.role,
+        location: res.location,
         status,
-        event_date: res.data.event_date || new Date().toISOString().slice(0, 10),
-        event_summary: res.data.event_summary,
+        event_date:
+          res.event_date ||
+          new Date().toISOString().slice(0, 10),
+        event_summary: res.event_summary,
       });
+
       setStage("review");
     } catch (e) {
       console.error(e);

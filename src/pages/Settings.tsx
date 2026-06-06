@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/theme";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "../../supabase/client";
 import { toast } from "sonner";
 
 function SettingsPage() {

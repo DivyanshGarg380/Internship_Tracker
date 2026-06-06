@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "../../supabase/client";
 import { STATUSES, type Application, type Status, type TimelineEvent, timeAgo } from "@/lib/applications";
 import { Search, Building2, MapPin, Calendar, Trash2 } from "lucide-react";
 import { AddApplicationDialog } from "@/components/add-application-dialog";
