@@ -76,6 +76,8 @@ export function PasteEmailDialog({ onCreated, trigger }: { onCreated?: () => voi
       return;
     }
     setBusy(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setBusy(false); toast.error("Please sign in."); return; }
 
     // Match by company + role (case-insensitive) — append event instead of duplicating.
     const { data: existing } = await supabase
@@ -91,6 +93,7 @@ export function PasteEmailDialog({ onCreated, trigger }: { onCreated?: () => voi
       const { data: created, error } = await supabase
         .from("applications")
         .insert({
+          user_id: user.id,
           company: data.company.slice(0, 200),
           role: data.role.slice(0, 200),
           location: data.location.slice(0, 200),
@@ -110,6 +113,7 @@ export function PasteEmailDialog({ onCreated, trigger }: { onCreated?: () => voi
     }
 
     await supabase.from("timeline_events").insert({
+      user_id: user.id,
       application_id: appId,
       event_date: data.event_date,
       event: data.event_summary.slice(0, 500),

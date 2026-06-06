@@ -25,6 +25,7 @@ export type Database = {
           role: string
           status: Database["public"]["Enums"]["app_status"]
           updated_at: string
+          user_id: string
         }
         Insert: {
           applied_date?: string
@@ -36,6 +37,7 @@ export type Database = {
           role: string
           status?: Database["public"]["Enums"]["app_status"]
           updated_at?: string
+          user_id: string
         }
         Update: {
           applied_date?: string
@@ -47,6 +49,7 @@ export type Database = {
           role?: string
           status?: Database["public"]["Enums"]["app_status"]
           updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -58,6 +61,7 @@ export type Database = {
           event_date: string
           id: string
           status: Database["public"]["Enums"]["app_status"] | null
+          user_id: string
         }
         Insert: {
           application_id: string
@@ -66,6 +70,7 @@ export type Database = {
           event_date?: string
           id?: string
           status?: Database["public"]["Enums"]["app_status"] | null
+          user_id: string
         }
         Update: {
           application_id?: string
@@ -74,6 +79,7 @@ export type Database = {
           event_date?: string
           id?: string
           status?: Database["public"]["Enums"]["app_status"] | null
+          user_id?: string
         }
         Relationships: [
           {

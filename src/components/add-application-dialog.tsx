@@ -34,9 +34,12 @@ export function AddApplicationDialog({ onCreated, trigger }: { onCreated?: () =>
       return;
     }
     setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setSaving(false); toast.error("Please sign in."); return; }
     const { data, error } = await supabase
       .from("applications")
       .insert({
+        user_id: user.id,
         company: company.trim().slice(0, 200),
         role: role.trim().slice(0, 200),
         location: location.trim().slice(0, 200),
@@ -52,6 +55,7 @@ export function AddApplicationDialog({ onCreated, trigger }: { onCreated?: () =>
       return;
     }
     await supabase.from("timeline_events").insert({
+      user_id: user.id,
       application_id: data.id,
       event_date: appliedDate,
       event: `Application created (${status})`,
