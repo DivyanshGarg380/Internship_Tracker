@@ -1,15 +1,14 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Toaster } from "@/components/ui/sonner";
 
 import Dashboard from "./pages/Dashboard";
-import Applications from "./pages/Application";
-import Analytics from "./pages/Analytics";
-import Timeline from "./pages/Timeline";
-import Settings from "./pages/Settings";
+import ApplicationsPage from "./pages/Application";
+import AnalyticsPage from "./pages/Analytics";
+import TimelinePage from "./pages/Timeline";
+import SettingsPage from "./pages/Settings";
 
 export default function App() {
   return (
@@ -30,10 +29,10 @@ export default function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/applications" element={<Applications />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/timeline" element={<Timeline />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/applications" element={<ApplicationsPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/timeline" element={<TimelinePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
         <Toaster richColors position="top-right" />
