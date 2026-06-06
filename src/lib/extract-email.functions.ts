@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const InputSchema = z.object({
-  email: z.string().min(10).max(50000),
+  email: z.string().min(10).max(10000),
 });
 
 const SYSTEM_PROMPT = `You extract structured internship-application data from a single recruiting email.
@@ -17,6 +18,7 @@ Status values must be exactly one of: "Applied", "Under Review", "OA Received", 
 Date format: YYYY-MM-DD.`;
 
 export const extractEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => InputSchema.parse(data))
   .handler(async ({ data }) => {
     const apiKey = process.env.LOVABLE_API_KEY;
