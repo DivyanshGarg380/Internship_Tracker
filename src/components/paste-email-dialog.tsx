@@ -49,20 +49,20 @@ export function PasteEmailDialog({ onCreated, trigger }: { onCreated?: () => voi
       const res = await extractEmail(
         email.trim().slice(0, 50000)
       );
-
+      console.log(res);
       const status = (STATUSES as readonly string[]).includes(res.status)
         ? (res.status as Status)
         : "Applied";
 
       setData({
-        company: res.company,
-        role: res.role,
-        location: res.location,
+        company: res.company ?? "",
+        role: res.role ?? "",
+        location: res.location ?? "",
         status,
         event_date:
           res.event_date ||
           new Date().toISOString().slice(0, 10),
-        event_summary: res.event_summary,
+        event_summary: res.event_summary ?? "",
       });
 
       setStage("review");

@@ -66,8 +66,9 @@ function ApplicationsPage() {
   async function updateStatus(app: Application, next: Status) {
     const { error } = await supabase.from("applications").update({ status: next }).eq("id", app.id);
     if (error) { toast.error(error.message); return; }
-    await supabase.from("timeline_events").insert({
+    const { error: timelineError } = await supabase.from("timeline_events").insert({
       application_id: app.id,
+      event_date: new Date().toISOString().slice(0, 10),
       event: `Status changed to ${next}`,
       status: next,
     });
