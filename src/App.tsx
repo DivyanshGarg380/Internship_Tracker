@@ -19,17 +19,64 @@ import SettingsPage from "./pages/Settings";
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    async function init() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      setSession(session);
+
+      if (!session) {
+        setAuthorized(false);
+        setLoading(false);
+        return;
+      }
+
+      const { data: allowedUser } = await supabase
+        .from("allowed_users")
+        .select("email")
+        .eq("email", session.user.email)
+        .maybeSingle();
+
+      if (!allowedUser) {
+        await supabase.auth.signOut();
+        setSession(null);
+        setAuthorized(false);
+      } else {
+        setAuthorized(true);
+      }
+
       setLoading(false);
-    });
+    }
+
+    init();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
+
+      if (!session) {
+        setAuthorized(false);
+        return;
+      }
+
+      const { data: allowedUser } = await supabase
+        .from("allowed_users")
+        .select("email")
+        .eq("email", session.user.email)
+        .maybeSingle();
+
+      if (!allowedUser) {
+        await supabase.auth.signOut();
+        setSession(null);
+        setAuthorized(false);
+      } else {
+        setAuthorized(true);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -43,7 +90,7 @@ export default function App() {
     );
   }
 
-  if (!session) {
+  if (!session || authorized === false) {
     return <Login />;
   }
 

@@ -16,13 +16,13 @@ export default function Login() {
 
     if (!session) return;
 
-    const { data: allowedUser } = await supabase
+    const { data: allowedUser, error } = await supabase
       .from("allowed_users")
       .select("email")
       .eq("email", session.user.email)
-      .single();
+      .maybeSingle();
 
-    if (!allowedUser) {
+    if (error || !allowedUser) {
       await supabase.auth.signOut();
       setMessage("You are not authorized to access Inboxly.");
       return;
