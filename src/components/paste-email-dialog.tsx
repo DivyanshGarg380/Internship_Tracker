@@ -62,7 +62,8 @@ export function PasteEmailDialog({ onCreated, trigger }: { onCreated?: () => voi
         event_date:
           res.event_date ||
           new Date().toISOString().slice(0, 10),
-        event_summary: res.event_summary ?? "",
+        event_summary: res.event_summary ||
+          `Application created (${status})`,  
       });
 
       setStage("review");
@@ -113,10 +114,19 @@ export function PasteEmailDialog({ onCreated, trigger }: { onCreated?: () => voi
       await supabase.from("applications").update({ status: data.status }).eq("id", appId);
     }
 
+    console.log("SAVING TIMELINE EVENT", {
+      application_id: appId,
+      event_date: data.event_date,
+      event: data.event_summary,
+      status: data.status,
+    });
+
     await supabase.from("timeline_events").insert({
       application_id: appId,
       event_date: data.event_date,
-      event: data.event_summary.slice(0, 500),
+      event:
+        data.event_summary?.slice(0, 500) ||
+        `Application created (${data.status})`,
       status: data.status,
     });
 
