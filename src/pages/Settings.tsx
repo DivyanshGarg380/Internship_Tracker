@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/lib/theme";
 import { supabase } from "../../supabase/client";
 import { toast } from "sonner";
+import { LogOut } from "lucide-react";
 
 function SettingsPage() {
   const { theme, toggle } = useTheme();
@@ -21,6 +22,17 @@ function SettingsPage() {
     URL.revokeObjectURL(url);
   }
 
+  async function logout() {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Logged out");
+  }
+
   async function clearAll() {
     if (!confirm("Delete ALL applications and timeline events? This cannot be undone.")) return;
     const { error } = await supabase.from("applications").delete().neq("id", "00000000-0000-0000-0000-000000000000");
@@ -32,7 +44,7 @@ function SettingsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Personal tracker — single user, no authentication.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Personal tracker with Google authentication.</p>
       </div>
 
       <Card>
@@ -59,6 +71,33 @@ function SettingsPage() {
             <p className="text-xs text-muted-foreground">Downloads a JSON snapshot.</p>
           </div>
           <Button variant="outline" size="sm" onClick={exportJson}>Export JSON</Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Account</CardTitle>
+          <CardDescription>
+            Manage your Inboxly session.
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Sign out</p>
+            <p className="text-xs text-muted-foreground">
+              Log out of your Google account session for Inboxly.
+            </p>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={logout}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
         </CardContent>
       </Card>
 
