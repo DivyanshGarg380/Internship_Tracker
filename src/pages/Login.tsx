@@ -6,6 +6,11 @@ export default function Login() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    const authError = sessionStorage.getItem("auth_error");
+    if (authError) {
+      setMessage(authError);
+      sessionStorage.removeItem("auth_error");
+    }
     checkAccess();
   }, []);
 
@@ -24,7 +29,11 @@ export default function Login() {
 
     if (error || !allowedUser) {
       await supabase.auth.signOut();
-      setMessage("You are not authorized to access Inboxly.");
+      sessionStorage.setItem(
+        "auth_error",
+        "You are not authorized to access Inboxly."
+      );
+      window.location.reload();
       return;
     }
 
