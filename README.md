@@ -61,15 +61,10 @@ Automatically identifies recruitment-related emails from:
 Supported email categories:
 
 - Application Received
-- Under Review
 - OA Received
-- OA Completed
-- Interview Scheduled
-- Interview Completed
-- Waitlisted
+- Interview
 - Rejected
 - Offer Received
-- Offer Accepted
 
 ---
 
