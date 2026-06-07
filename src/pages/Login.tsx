@@ -54,11 +54,11 @@ export default function Login() {
   );
 
   return (
-    <div className="relative flex min-h-screen bg-zinc-950 text-zinc-100 overflow-hidden">
+    <div className="relative flex min-h-screen overflow-hidden bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
 
       {/* Grid Background */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.03]"
+        className="pointer-events-none absolute inset-0 opacity-[0.04] dark:opacity-[0.03]"
         style={{
           backgroundImage:
             "linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px)",
@@ -67,10 +67,10 @@ export default function Login() {
       />
 
       {/* Left Section */}
-      <div className="hidden lg:flex w-1/2 flex-col justify-between border-r border-zinc-900 p-16 relative">
+      <div className="hidden lg:flex w-1/2 flex-col justify-between border-r border-zinc-200 dark:border-zinc-900 p-16 relative">
         <div>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
               <Inbox className="h-5 w-5" />
             </div>
 
@@ -90,7 +90,7 @@ export default function Login() {
               interviews.
             </h1>
 
-            <p className="mt-8 max-w-md text-lg leading-relaxed text-zinc-500">
+            <p className="mt-8 max-w-md text-lg leading-relaxed text-zinc-600 dark:text-zinc-500">
               A private recruiting workspace built for managing internship
               applications, interviews, recruiter conversations, and career
               opportunities.
@@ -99,7 +99,7 @@ export default function Login() {
         </div>
 
         <div>
-          <p className="text-sm text-zinc-600">
+          <p className="text-sm text-zinc-500 dark:text-zinc-600">
             Built and maintained by Divyansh Garg
           </p>
         </div>
@@ -112,7 +112,7 @@ export default function Login() {
 
           <div className="lg:hidden mb-10">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
                 <Inbox className="h-5 w-5" />
               </div>
 
@@ -122,14 +122,14 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-8">
+          <div className="rounded-3xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/50 dark:shadow-none p-8">
 
             <div className="mb-8">
               <h2 className="text-3xl font-semibold tracking-tight">
                 Welcome back
               </h2>
 
-              <p className="mt-2 text-sm text-zinc-500">
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-500">
                 Sign in with your authorized Google account.
               </p>
             </div>
@@ -145,17 +145,21 @@ export default function Login() {
                 gap-3
                 rounded-xl
                 border
-                border-zinc-700
+                border-zinc-300
                 bg-white
                 px-4
                 py-3
                 font-medium
-                text-black
+                text-zinc-900
                 transition-all
-                hover:bg-zinc-200
+                hover:bg-zinc-100
                 active:scale-[0.98]
                 disabled:opacity-50
                 cursor-pointer
+                dark:border-zinc-700
+                dark:bg-white
+                dark:text-black
+                dark:hover:bg-zinc-200
               "
             >
               {loading ? (
@@ -178,12 +182,12 @@ export default function Login() {
               </div>
             )}
 
-            <div className="mt-8 border-t border-zinc-800 pt-6">
-              <p className="text-sm text-zinc-500">
+            <div className="mt-8 border-t border-zinc-200 dark:border-zinc-800 pt-6">
+              <p className="text-sm text-zinc-600 dark:text-zinc-500">
                 Access is restricted to approved users.
               </p>
 
-              <div className="mt-2 flex items-center gap-2 text-xs text-zinc-600">
+              <div className="mt-2 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-600">
                 <Lock className="h-3 w-3" />
                 Authorized users only
               </div>
