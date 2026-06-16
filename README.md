@@ -360,32 +360,6 @@ flowchart LR
 
 ---
 
-## Status Resolution Workflow
-
-```mermaid
-flowchart TD
-
-    EMAIL[New Email]
-
-    EMAIL --> DETECT[Detect Recruitment Email]
-
-    DETECT --> EXTRACT[Extract Structured Data]
-
-    EXTRACT --> CHECK{Application Exists?}
-
-    CHECK -->|Yes| UPDATE[Update Status]
-
-    CHECK -->|No| CREATE[Create Application]
-
-    UPDATE --> EVENT[Append Timeline Event]
-
-    CREATE --> EVENT
-
-    EVENT --> DB[(Database)]
-```
-
----
-
 ## Performance Optimizations
 
 - Incremental Gmail synchronization
