@@ -9,11 +9,11 @@
   <img src="https://img.shields.io/badge/Gemini-4285F4?style=flat-square&logo=google&logoColor=white" />
 </p>
 
-An intelligent recruiting CRM that automatically tracks internship and job applications directly from Gmail, extracts recruitment updates using AI, maintains complete application timelines, and provides real-time analytics through a centralized dashboard.
+An intelligent recruiting CRM that extracts recruitment updates from email content using AI, maintains complete application timelines, and provides real-time analytics through a centralized dashboard.
 
 ---
 
-⭐ Automatically tracks the entire recruiting journey without spreadsheets
+⭐ Track the entire recruiting journey without spreadsheets
 
 📈 Designed for students applying to dozens or hundreds of internships
 
@@ -43,7 +43,7 @@ Most students currently rely on:
 
 These approaches quickly become outdated and require constant maintenance.
 
-This platform aims to become a personal recruiting operating system that automatically maintains application records, status changes, and recruiting analytics directly from a user's inbox.
+This platform aims to become a personal recruiting operating system that maintains application records, status changes, and recruiting analytics from recruitment emails provided by the user.
 
 ---
 
@@ -51,7 +51,9 @@ This platform aims to become a personal recruiting operating system that automat
 
 ### Recruitment Email Detection
 
-Automatically identifies recruitment-related emails from:
+Identifies recruitment-related emails from user-provided email content.
+
+Supported sources include:
 
 - Applicant Tracking Systems (ATS)
 - Company recruiting teams
@@ -118,6 +120,8 @@ The platform extracts:
 - Location
 - Recruiter Information
 - Current Application Status
+
+Users can paste the contents of a recruitment email and the platform will extract structured application information.
 
 Example:
 
@@ -210,14 +214,14 @@ May 24 → Interview Scheduled
 
 ### Privacy First
 
-The platform only processes recruitment-related emails.
+The platform only processes email content explicitly provided by the user.
 
 Features:
 
-- Read-only Gmail access
-- Encrypted token storage
+- No Gmail access required
+- User-controlled data submission
 - User-isolated records
-- Secure OAuth authentication
+- Secure authentication
 
 ---
 
@@ -226,9 +230,7 @@ Features:
 The platform continuously processes recruitment updates using a multi-stage pipeline.
 
 ```text
-Gmail
-↓
-Email Sync Engine
+Email Content
 ↓
 Recruitment Detection
 ↓
@@ -341,11 +343,9 @@ Permissions:
 ```mermaid
 flowchart LR
 
-    GMAIL[Gmail API]
+    EMAIL[Email Content]
 
-    GMAIL --> SYNC[Email Sync Engine]
-
-    SYNC --> DETECT[Recruitment Detection Layer]
+    EMAIL --> DETECT[Recruitment Detection Layer]
 
     DETECT --> AI[AI Extraction Engine]
 
@@ -356,32 +356,6 @@ flowchart LR
     DB --> DASH[Dashboard]
 
     DASH --> USER[Student]
-```
-
----
-
-## Status Resolution Workflow
-
-```mermaid
-flowchart TD
-
-    EMAIL[New Email]
-
-    EMAIL --> DETECT[Detect Recruitment Email]
-
-    DETECT --> EXTRACT[Extract Structured Data]
-
-    EXTRACT --> CHECK{Application Exists?}
-
-    CHECK -->|Yes| UPDATE[Update Status]
-
-    CHECK -->|No| CREATE[Create Application]
-
-    UPDATE --> EVENT[Append Timeline Event]
-
-    CREATE --> EVENT
-
-    EVENT --> DB[(Database)]
 ```
 
 ---
@@ -423,8 +397,8 @@ flowchart TD
 
 ### Phase 1
 
-- Gmail OAuth
-- Email Synchronization
+- Recruitment Email Parser
+- AI Extraction Engine
 - Recruitment Detection
 
 ### Phase 2
@@ -447,9 +421,9 @@ flowchart TD
 
 ### Phase 5
 
-- Multi-Mail Support
-- Outlook Integration
+- Bulk Email Parsing
 - Career Insights Engine
+- Resume-Aware Analytics
 
 ---
 
@@ -467,11 +441,6 @@ flowchart TD
 - Supabase
 - PostgreSQL
 - Edge Functions
-
-### Integrations
-
-- Gmail API
-- Google OAuth
 
 ### AI
 
@@ -491,9 +460,6 @@ Create a `.env` file in the root directory:
 ```env
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_key
-
-VITE_GOOGLE_CLIENT_ID=your_google_client_id
-
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
