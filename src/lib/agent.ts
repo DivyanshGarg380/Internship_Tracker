@@ -104,7 +104,7 @@ export async function uploadResume(file : File): Promise<{path: string; error: s
 }
 
 export async function getLatestResume(): Promise<ResumeDocument | null> {
-    const { data } = await supabase.from("resume_documents").select(*).order("created_at", {ascending: false}).limit(1).maybeSingle();
+    const { data } = await supabase.from("resume_documents").select("*").order("created_at", {ascending: false}).limit(1).maybeSingle();
     return data as ResumeDocument | null;
 }
 

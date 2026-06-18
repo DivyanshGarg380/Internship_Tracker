@@ -16,6 +16,11 @@ import AnalyticsPage from "./pages/Analytics";
 import TimelinePage from "./pages/Timeline";
 import SettingsPage from "./pages/Settings";
 
+import AIOpportunities from "./pages/AIOppurtunities";
+import ResumeSetup from "./pages/ResumeSetup";
+import AgentPreferences from "./pages/AgentPreferences";
+
+
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -119,6 +124,9 @@ export default function App() {
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/timeline" element={<TimelinePage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/ai-opportunities" element={<AIOpportunities />} />
+            <Route path="/resume" element={<ResumeSetup />} />
+            <Route path="/preferences" element={<AgentPreferences />} />
           </Routes>
         </main>
 
