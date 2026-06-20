@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/Gemini-4285F4?style=flat-square&logo=google&logoColor=white" />
 </p>
 
-An intelligent recruiting CRM that extracts recruitment updates from email content using AI, maintains complete application timelines, and provides real-time analytics through a centralized dashboard.
+An intelligent recruiting CRM that extracts recruitment updates from email content using AI, maintains complete application timelines, and provides real-time analytics through a centralized dashboard. It also includes an AI Recruiting Agent that proactively discovers and ranks new opportunities from real company career pages.
 
 ---
 
@@ -18,6 +18,8 @@ An intelligent recruiting CRM that extracts recruitment updates from email conte
 📈 Designed for students applying to dozens or hundreds of internships
 
 ⚡ Real-time application status tracking and analytics
+
+🤖 An AI agent that discovers and ranks new opportunities for you
 
 ---
 
@@ -43,7 +45,7 @@ Most students currently rely on:
 
 These approaches quickly become outdated and require constant maintenance.
 
-This platform aims to become a personal recruiting operating system that maintains application records, status changes, and recruiting analytics from recruitment emails provided by the user.
+This platform aims to become a personal recruiting operating system that maintains application records, status changes, and recruiting analytics from recruitment emails provided by the user — and, with the AI Recruiting Agent, proactively finds new opportunities worth applying to in the first place.
 
 ---
 
@@ -212,9 +214,46 @@ May 24 → Interview Scheduled
 
 ---
 
+### AI Recruiting Agent
+
+Beyond tracking applications, the platform includes an AI agent that proactively finds new opportunities to apply to.
+
+```text
+Resume Upload
+↓
+AI Resume Parsing
+↓
+Candidate Profile
+↓
+AI-Generated Search Queries
+↓
+Company Career Page Discovery
+↓
+Embedding-Based Semantic Matching
+↓
+AI Reasoning (YES / NO / MAYBE + confidence + explanation)
+↓
+Opportunity Queue
+↓
+User Review (Accept / Reject)
+↓
+Application Tracker
+```
+
+The agent tracks real company career pages directly — including Google, Microsoft, Amazon, Meta, Apple, Netflix, Stripe, Uber, Airbnb, Anthropic, OpenAI, Databricks, and more — rather than relying on a generic job board.
+
+Core principles:
+
+- **Never fetches every job.** Discovery always starts from the candidate's stated role, location, and graduation-year constraints.
+- **Explains every recommendation.** Each queued opportunity shows its match score, AI confidence, and the specific reasons it was surfaced.
+- **Learns from feedback.** Accepting or rejecting a role feeds back into future ranking.
+- **Nothing is applied automatically.** The agent only queues candidates; the user approves every application before it's tracked.
+
+---
+
 ### Privacy First
 
-The platform only processes email content explicitly provided by the user.
+The platform only processes email content explicitly provided by the user, and the AI Recruiting Agent only crawls publicly available company career page listings — never the user's private inbox.
 
 Features:
 
@@ -245,6 +284,24 @@ Analytics Engine
 Dashboard
 ```
 
+The AI Recruiting Agent runs a parallel discovery pipeline that feeds into the same tracker:
+
+```text
+Resume + Preferences
+↓
+AI Query Generation
+↓
+Company Career Page Crawling
+↓
+Embedding Similarity + AI Evaluation
+↓
+Opportunity Queue
+↓
+User Review
+↓
+Dashboard
+```
+
 ---
 
 ## Supabase Integration
@@ -253,8 +310,9 @@ The project uses Supabase as the primary backend platform.
 
 ### Supabase Services Used
 
-- PostgreSQL Database
+- PostgreSQL Database (with `pgvector` for the AI agent's embeddings)
 - Supabase Auth
+- Supabase Storage (resume uploads)
 - Edge Functions
 - Row Level Security (RLS)
 - Scheduled Jobs
@@ -326,6 +384,115 @@ processed_at
 
 ---
 
+### candidate_profiles
+
+```sql
+id
+user_id
+skills
+domains
+education
+experience_level
+graduation_year
+preferred_roles
+resume_embedding
+```
+
+---
+
+### resume_documents
+
+```sql
+id
+user_id
+file_name
+storage_path
+status
+parsed_at
+```
+
+---
+
+### user_preferences
+
+```sql
+id
+user_id
+preferred_roles
+preferred_locations
+graduation_year
+target_companies
+```
+
+---
+
+### job_sources
+
+```sql
+id
+company
+careers_url
+api_type
+tier
+active
+```
+
+---
+
+### discovered_jobs
+
+```sql
+id
+user_id
+company
+role
+location
+embedding
+match_score
+ai_decision
+ai_confidence
+ai_reasoning
+```
+
+---
+
+### job_queue
+
+```sql
+id
+user_id
+discovered_job_id
+status
+match_score
+ai_reasoning
+```
+
+---
+
+### user_agent_feedback
+
+```sql
+id
+user_id
+queue_item_id
+decision
+```
+
+---
+
+### agent_run_log
+
+```sql
+id
+user_id
+status
+jobs_discovered
+jobs_queued
+current_step
+```
+
+---
+
 ## Row Level Security (RLS)
 
 All user data is protected through Supabase RLS policies.
@@ -344,12 +511,19 @@ Permissions:
 flowchart LR
 
     EMAIL[Email Content]
+    RESUME[Resume Upload]
 
     EMAIL --> DETECT[Recruitment Detection Layer]
+    RESUME --> PARSE[AI Resume Parser]
 
     DETECT --> AI[AI Extraction Engine]
+    PARSE --> AGENT[Discovery Agent]
+
+    AGENT --> QUEUE[Opportunity Queue]
+    QUEUE --> USERREVIEW[User Review]
 
     AI --> RESOLVE[Status Resolution Engine]
+    USERREVIEW --> RESOLVE
 
     RESOLVE --> DB[(Supabase PostgreSQL)]
 
@@ -368,6 +542,9 @@ flowchart LR
 - Cached application metrics
 - Optimized PostgreSQL indexing
 - Batched status updates
+- Query-first job discovery for the AI agent — never fetches all available jobs
+- Capped opportunities per agent run, with a hard timeout so runs always terminate
+- Cached embeddings and AI evaluations to avoid repeated Gemini calls
 
 ---
 
@@ -384,6 +561,7 @@ flowchart LR
 - Secure API routes
 - User-level data isolation
 - Read-only Gmail permissions
+- Resumes stored in a private Supabase Storage bucket, accessible only to their owner
 
 ### Database Security
 
@@ -418,12 +596,14 @@ flowchart LR
 - Daily Recruiting Digest
 - Email Notifications
 - Mobile Optimization
+- AI Recruiting Agent (resume parsing, company career page discovery, embedding-based matching, AI reasoning, opportunity queue)
 
 ### Phase 5
 
 - Bulk Email Parsing
 - Career Insights Engine
 - Resume-Aware Analytics
+- Scheduled automatic agent runs
 
 ---
 
@@ -462,6 +642,8 @@ VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_key
 GEMINI_API_KEY=your_gemini_api_key
 ```
+
+Note: the AI Recruiting Agent's Edge Functions run on Supabase's servers and need their own `GEMINI_API_KEY` secret set directly in the Supabase Dashboard (Edge Functions → Manage secrets) — variables in `.env` are only visible to the frontend.
 
 ---
 
