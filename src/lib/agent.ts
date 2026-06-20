@@ -90,10 +90,10 @@ export async function uploadResume(file : File): Promise<{path: string; error: s
     const ext = file.name.split(".").pop();
     const path = `${user.id}/resume_${Date.now()}.${ext}`;
 
-    const {error: uploadError} = await supabase.storage.from("resume").upload(path, file, {upsert: true});
+    const {error: uploadError} = await supabase.storage.from("resumes").upload(path, file, {upsert: true});
     if(uploadError) return {path: "", error: uploadError.message};
 
-    await supabase.from("resume_docuemnts").insert({
+    await supabase.from("resume_documents").insert({
         user_id: user.id,
         file_name: file.name,
         storage_path: path,

@@ -146,7 +146,9 @@ function JobCard({ item, onDecision }: { item: QueueItem; onDecision: () => void
   );
 }
 
-function AgentStatusBanner({ run, onRefresh }: { run: AgentRunLog | null; onRefresh: () => void }) {
+function AgentStatusBanner({
+  run, onRefresh, onForceStop,
+}: { run: AgentRunLog | null; onRefresh: () => void; onForceStop: () => void }) {
   if (!run) return null;
   const isRunning = run.status === "running";
   const icon = isRunning
@@ -155,8 +157,10 @@ function AgentStatusBanner({ run, onRefresh }: { run: AgentRunLog | null; onRefr
     ? <CheckCircle2 className="h-4 w-4 text-green-500" />
     : <AlertCircle className="h-4 w-4 text-destructive" />;
 
+  const hasProgress = isRunning && run.jobs_total && run.jobs_total > 0;
+
   const text = isRunning
-    ? "Agent is running — discovering opportunities..."
+    ? run.current_step ?? "Agent is running — discovering opportunities..."
     : run.status === "completed"
     ? `Last run: found ${run.jobs_discovered} jobs, queued ${run.jobs_queued} · ${timeAgo(run.completed_at!)}`
     : `Last run failed: ${run.error_message}`;
@@ -168,8 +172,19 @@ function AgentStatusBanner({ run, onRefresh }: { run: AgentRunLog | null; onRefr
       "border-destructive/30 bg-destructive/5"
     }`}>
       {icon}
-      <span className="flex-1 text-muted-foreground">{text}</span>
-      {!isRunning && (
+      <span className="flex-1 text-muted-foreground">
+        {text}
+        {hasProgress && (
+          <span className="ml-1 font-medium text-foreground">
+            ({run.jobs_processed ?? 0} of {run.jobs_total})
+          </span>
+        )}
+      </span>
+      {isRunning ? (
+        <button onClick={onForceStop} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive">
+          Stop watching
+        </button>
+      ) : (
         <button onClick={onRefresh} className="flex items-center gap-1 text-xs hover:text-foreground">
           <RefreshCw className="h-3 w-3" />
           Refresh
@@ -196,7 +211,18 @@ export default function AIOpportunities() {
 
   useEffect(() => {
     if (lastRun?.status !== "running") return;
+
+    const pollStartedAt = Date.now();
+    const FRONTEND_TIMEOUT_MS = 6 * 60 * 1000; // 6 minutes — beyond the 4-min backend cap
+
     const interval = setInterval(async () => {
+      if (Date.now() - pollStartedAt > FRONTEND_TIMEOUT_MS) {
+        clearInterval(interval);
+        setRunning(false);
+        toast.error("Agent run timed out. It may still finish in the background — check back shortly.");
+        return;
+      }
+
       const [q, r] = await Promise.all([getQueueItems("pending"), getLastAgentRun()]);
       setItems(q);
       setLastRun(r);
@@ -218,9 +244,15 @@ export default function AIOpportunities() {
       toast.error(error);
       setRunning(false);
     } else {
-      toast.info("Agent started — this takes 1–2 minutes.");
+      toast.info("Agent started — this can take a few minutes.");
       setTimeout(load, 1000);
     }
+  };
+
+  const handleForceStop = async () => {
+    setRunning(false);
+    setLastRun((prev) => prev ? { ...prev, status: "failed", error_message: "Stopped manually." } : prev);
+    toast.info("Stopped watching this run. It may still be finishing in the background.");
   };
 
   const stats = {
@@ -259,7 +291,7 @@ export default function AIOpportunities() {
       </div>
 
       {/* Agent status */}
-      <AgentStatusBanner run={lastRun} onRefresh={load} />
+      <AgentStatusBanner run={lastRun} onRefresh={load} onForceStop={handleForceStop} />
 
       {/* Stats row */}
       {items.length > 0 && (
