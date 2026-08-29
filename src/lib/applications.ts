@@ -2,6 +2,7 @@ export const STATUSES = [
   "Applied",
   "Under Review",
   "OA Received",
+  "OA Completed",
   "Interview",
   "Rejected",
   "Offer",
